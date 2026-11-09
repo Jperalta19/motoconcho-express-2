@@ -21,12 +21,15 @@ function getUserKey(name: string, type: 'total' | 'record'): string {
   return `motoconcho2-user-${encodeURIComponent(name)}-${type}`;
 }
 
-function validateCredentials(name: string, password: string): void {
+function validateCredentials(name: string, password: string, isRegister = false): void {
   if (!name || !password) {
     throw new Error('Completa usuario y clave.');
   }
   if (!/^[a-z0-9_.-]{1,32}$/.test(name)) {
     throw new Error('Usa de 1 a 32 letras sin acentos, números, punto, guion o guion bajo.');
+  }
+  if (isRegister && password.length < 6) {
+    throw new Error('La clave debe tener al menos 6 caracteres.');
   }
 }
 
@@ -47,7 +50,7 @@ export const Auth = {
 
   async register(username: string, password: string): Promise<string> {
     const name = cleanUsername(username);
-    validateCredentials(name, password);
+    validateCredentials(name, password, true);
     const users = getUserList();
     if (users.some(u => u.username === name)) {
       throw new Error('Ese usuario ya existe.');

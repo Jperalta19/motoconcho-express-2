@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 
-export type ObstacleKind = 'hole' | 'coin' | 'gasolina' | 'helmet' | 'nitro' | 'magnet';
+export type HazardKind = 'hole' | 'officer' | 'police_car' | 'truck' | 'tank';
+export type PickupKind = 'coin' | 'gasolina' | 'helmet' | 'nitro' | 'magnet';
+export type ObstacleKind = HazardKind | PickupKind;
 
 export interface GameItem extends Phaser.GameObjects.Image {
   kind: ObstacleKind;

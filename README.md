@@ -4,13 +4,24 @@ Secuela de Motoconcho Express: conduce un motoconcho por tres carriles en Santo 
 
 ## Cómo jugar
 
-Pulsa **¡Arrancamos!**. Usa las flechas izquierda y derecha del teclado o los botones ◀ y ▶ de la pantalla táctil para cambiar de carril. Esquiva los hoyos y recoge:
+Pulsa **¡Arrancamos!**. Usa las flechas izquierda y derecha del teclado o los botones ◀ y ▶ de la pantalla táctil para cambiar de carril. Esquiva los obstáculos y recoge:
 
 - 🪙 Monedas: +10 puntos.
 - ⛽ Gasolina: +15 puntos.
 - 🪖 Casco: absorbe un choque.
 - ⚡ Nitro: aumenta la velocidad y te hace invulnerable durante 4 segundos.
 - 🧲 Imán: atrae monedas durante 7 segundos.
+
+### Progresión de Obstáculos por Nivel
+
+A medida que sumas puntos (cada 100 puntos subes de nivel), los peligros de la calle evolucionan:
+
+1. **Nivel 1:** 🕳️ Hoyos y huacas en el pavimento.
+2. **Nivel 2:** 👮 Oficiales del tránsito (DIGESETT / Amet) con chaleco reflector y vara luminosa.
+3. **Nivel 3:** 🚓 Carros patrulla de la policía con sirena activa.
+4. **Nivel 4:** 🛻 Camionetas doble cabina.
+5. **Nivel 5:** 🎖️ Tanques de guerra blindados con cañón.
+6. **Nivel 6 en adelante:** 🔥 ¡Tapón total! Todos los obstáculos combinados en la vía.
 
 También ganas puntos por avanzar. Cada 100 puntos subes de nivel: la velocidad y la frecuencia de aparición aumentan, y se anuncia el nuevo nivel. El récord y el usuario se guardan en el almacenamiento local del navegador (`localStorage`). Usa el botón de sonido para silenciar o activar los efectos.
 

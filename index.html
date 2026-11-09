@@ -37,7 +37,7 @@
         <div class="card">
           <div class="eyebrow">UN VIAJECITO POR LA CAPITAL</div>
           <h2>¡Dale, que<br />voy en vía!</h2>
-          <p>Tres carriles. Demasiadas huacas.<br />Esquiva los huecos y recoge lo tuyo.</p>
+          <p>Tres carriles. Esquiva hoyos, agentes de tránsito,<br />patrullas, camionetas y tanques de guerra.</p>
           <div class="chips">
             <span class="chip">Moneda +10</span>
             <span class="chip">Gasolina +15</span>
@@ -71,8 +71,8 @@
           <p>Regístrate o inicia sesión para arrancar.</p>
           <label for="auth-user">Usuario</label>
           <input id="auth-user" autocomplete="username" maxlength="32" />
-          <label for="auth-password">Clave</label>
-          <input id="auth-password" type="password" autocomplete="current-password" />
+          <label for="auth-password">Clave <small style="font-weight: normal; font-size: 0.85em;">(mínimo 6 caracteres)</small></label>
+          <input id="auth-password" type="password" autocomplete="current-password" minlength="6" />
           <div id="auth-error" role="alert" aria-live="polite"></div>
           <div class="auth-buttons">
             <button id="register" class="action secondary" type="button">Registrarse</button>

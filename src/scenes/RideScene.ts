@@ -1,8 +1,36 @@
 import * as Phaser from 'phaser';
-import type { GameItem, ObstacleKind } from '../types';
+import type { GameItem, ObstacleKind, HazardKind } from '../types';
 import { sound } from '../services/audio';
 import { Auth } from '../services/auth';
 import { hud } from '../ui/hud';
+
+const HAZARDS: HazardKind[] = ['hole', 'officer', 'police_car', 'truck', 'tank'];
+
+const HIT_HEIGHT: Record<ObstacleKind, number> = {
+  hole: 28,
+  officer: 32,
+  police_car: 42,
+  truck: 46,
+  tank: 50,
+  coin: 30,
+  gasolina: 30,
+  helmet: 30,
+  nitro: 30,
+  magnet: 30
+};
+
+const HIT_WIDTH: Record<ObstacleKind, number> = {
+  hole: 38,
+  officer: 26,
+  police_car: 32,
+  truck: 34,
+  tank: 38,
+  coin: 30,
+  gasolina: 30,
+  helmet: 30,
+  nitro: 30,
+  magnet: 30
+};
 
 export class RideScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Graphics;
@@ -138,6 +166,141 @@ export class RideScene extends Phaser.Scene {
     g.lineBetween(9, 12, 2, 7);
     g.lineBetween(66, 28, 75, 32);
     g.generateTexture('hole', 80, 42);
+    g.clear();
+
+    // Oficial de tránsito (DIGESETT con chaleco reflector y vara luminosa)
+    g.fillStyle(0x152c36, 0.35);
+    g.fillEllipse(28, 54, 38, 14);
+    g.fillStyle(0x13222d);
+    g.fillRoundedRect(16, 38, 10, 18, 4);
+    g.fillRoundedRect(30, 38, 10, 18, 4);
+    g.fillStyle(0x44dd00);
+    g.lineStyle(2, 0x173a48);
+    g.fillRoundedRect(12, 16, 32, 26, 6);
+    g.strokeRoundedRect(12, 16, 32, 26, 6);
+    g.fillStyle(0xffffff);
+    g.fillRect(16, 26, 24, 4);
+    g.fillRect(16, 33, 24, 3);
+    g.fillStyle(0xd58b55);
+    g.fillCircle(28, 15, 8);
+    g.fillStyle(0x1e4620);
+    g.fillCircle(28, 12, 8);
+    g.fillStyle(0x111c13);
+    g.fillRect(20, 6, 16, 4);
+    g.fillStyle(0xd58b55);
+    g.fillCircle(45, 24, 4);
+    g.fillStyle(0xff5500);
+    g.lineStyle(1, 0xffffff);
+    g.fillRoundedRect(43, 10, 6, 22, 2);
+    g.strokeRoundedRect(43, 10, 6, 22, 2);
+    g.generateTexture('officer', 56, 64);
+    g.clear();
+
+    // Carro de policía (Patrulla con sirena azul y roja)
+    g.fillStyle(0x152c36, 0.4);
+    g.fillRoundedRect(4, 8, 52, 74, 12);
+    g.fillStyle(0x111a1e);
+    g.fillRoundedRect(2, 14, 6, 16, 2);
+    g.fillRoundedRect(52, 14, 6, 16, 2);
+    g.fillRoundedRect(2, 56, 6, 16, 2);
+    g.fillRoundedRect(52, 56, 6, 16, 2);
+    g.fillStyle(0x133b68);
+    g.lineStyle(2, 0x0c213a);
+    g.fillRoundedRect(6, 6, 48, 74, 10);
+    g.strokeRoundedRect(6, 6, 48, 74, 10);
+    g.fillStyle(0xffffff);
+    g.fillRoundedRect(10, 26, 40, 32, 4);
+    g.fillStyle(0x306080);
+    g.fillRoundedRect(12, 18, 36, 10, 3);
+    g.fillRoundedRect(14, 56, 32, 8, 2);
+    g.fillStyle(0xffe66d);
+    g.fillRect(10, 7, 8, 4);
+    g.fillRect(42, 7, 8, 4);
+    g.fillStyle(0xcc2936);
+    g.fillRect(10, 76, 8, 3);
+    g.fillRect(42, 76, 8, 3);
+    g.fillStyle(0x222222);
+    g.fillRoundedRect(16, 36, 28, 8, 2);
+    g.fillStyle(0xff2222);
+    g.fillRect(17, 37, 12, 6);
+    g.fillStyle(0x2277ff);
+    g.fillRect(31, 37, 12, 6);
+    g.fillStyle(0xffffff);
+    g.fillRect(28, 37, 4, 6);
+    g.generateTexture('police_car', 60, 86);
+    g.clear();
+
+    // Camioneta (Pickup doble cabina con platón de carga)
+    g.fillStyle(0x152c36, 0.4);
+    g.fillRoundedRect(4, 10, 56, 82, 12);
+    g.fillStyle(0x111a1e);
+    g.fillRoundedRect(2, 16, 7, 18, 3);
+    g.fillRoundedRect(55, 16, 7, 18, 3);
+    g.fillRoundedRect(2, 66, 7, 18, 3);
+    g.fillRoundedRect(55, 66, 7, 18, 3);
+    g.fillStyle(0x8a2824);
+    g.lineStyle(2, 0x4a120f);
+    g.fillRoundedRect(7, 6, 50, 84, 8);
+    g.strokeRoundedRect(7, 6, 50, 84, 8);
+    g.fillStyle(0x9e312c);
+    g.fillRoundedRect(11, 8, 42, 20, 4);
+    g.fillStyle(0x2d4f5c);
+    g.fillRoundedRect(13, 26, 38, 12, 3);
+    g.fillStyle(0x731e1a);
+    g.fillRoundedRect(12, 37, 40, 18, 3);
+    g.fillStyle(0x2d4f5c);
+    g.fillRect(15, 54, 34, 4);
+    g.fillStyle(0x222224);
+    g.lineStyle(2, 0x5a1815);
+    g.fillRoundedRect(11, 60, 42, 26, 4);
+    g.strokeRoundedRect(11, 60, 42, 26, 4);
+    g.fillStyle(0x151d20);
+    g.fillCircle(32, 73, 9);
+    g.fillStyle(0x444d52);
+    g.fillCircle(32, 73, 4);
+    g.fillStyle(0xfff3a1);
+    g.fillRect(10, 6, 9, 4);
+    g.fillRect(45, 6, 9, 4);
+    g.lineStyle(3, 0x111111);
+    g.lineBetween(8, 6, 56, 6);
+    g.generateTexture('truck', 64, 96);
+    g.clear();
+
+    // Tanque de guerra (Blindado con orugas militares y cañón frontal)
+    g.fillStyle(0x152c36, 0.45);
+    g.fillRoundedRect(2, 10, 68, 88, 14);
+    g.fillStyle(0x202919);
+    g.lineStyle(1, 0x11160d);
+    g.fillRoundedRect(4, 10, 14, 84, 4);
+    g.strokeRoundedRect(4, 10, 14, 84, 4);
+    g.fillRoundedRect(54, 10, 14, 84, 4);
+    g.strokeRoundedRect(54, 10, 14, 84, 4);
+    g.fillStyle(0x39482f);
+    for (const treadY of [14, 24, 34, 44, 54, 64, 74, 84]) {
+      g.fillRect(5, treadY, 12, 3);
+      g.fillRect(55, treadY, 12, 3);
+    }
+    g.fillStyle(0x4a5d36);
+    g.lineStyle(2, 0x222e17);
+    g.fillRoundedRect(16, 12, 40, 80, 6);
+    g.strokeRoundedRect(16, 12, 40, 80, 6);
+    g.fillStyle(0x354425);
+    g.fillRoundedRect(18, 16, 18, 22, 4);
+    g.fillRoundedRect(28, 56, 24, 24, 4);
+    g.fillStyle(0x5c7244);
+    g.fillRoundedRect(26, 32, 22, 18, 4);
+    g.fillStyle(0x3c4c2c);
+    g.lineStyle(2, 0x1f2b15);
+    g.fillCircle(36, 52, 16);
+    g.strokeCircle(36, 52, 16);
+    g.fillStyle(0x29351d);
+    g.fillCircle(40, 48, 6);
+    g.fillStyle(0x2c3820);
+    g.lineStyle(2, 0x182211);
+    g.fillRoundedRect(33, 64, 6, 34, 2);
+    g.strokeRoundedRect(33, 64, 6, 34, 2);
+    g.fillRoundedRect(31, 94, 10, 6, 2);
+    g.generateTexture('tank', 72, 104);
     g.clear();
 
     // Moneda
@@ -308,7 +471,12 @@ export class RideScene extends Phaser.Scene {
       obj.destroy();
       obj.dead = true;
       sound.play('shield');
-      this.announce('¡Casco salvador!');
+      let saveMsg = '¡Casco salvador!';
+      if (obj.kind === 'officer') saveMsg = '¡Te libraste de la multa!';
+      else if (obj.kind === 'police_car') saveMsg = '¡Esquivaste la patrulla!';
+      else if (obj.kind === 'truck') saveMsg = '¡El casco aguantó la camioneta!';
+      else if (obj.kind === 'tank') saveMsg = '¡El casco blindado resistió!';
+      this.announce(saveMsg);
       this.refresh();
       return;
     }
@@ -439,7 +607,13 @@ export class RideScene extends Phaser.Scene {
     if (newLevel > this.level) {
       this.level = newLevel;
       this.speed = 220 + (this.level - 1) * 25;
-      this.announce(`Nivel ${this.level}`);
+      let msg = `Nivel ${this.level}`;
+      if (this.level === 2) msg = '¡Nivel 2: ¡Los Amet!';
+      else if (this.level === 3) msg = '¡Nivel 3: ¡La Policía!';
+      else if (this.level === 4) msg = '¡Nivel 4: ¡Camionetas!';
+      else if (this.level === 5) msg = '¡Nivel 5: ¡Tanques de guerra!';
+      else if (this.level >= 6) msg = `¡Nivel ${this.level}: ¡Tapón total!`;
+      this.announce(msg);
     }
 
     this.roadOffset += speed * dt;
@@ -453,9 +627,9 @@ export class RideScene extends Phaser.Scene {
     if (this.nextSpawn <= 0) {
       const r = Math.random();
       const type: ObstacleKind =
-        r < 0.43
-          ? 'hole'
-          : r < 0.67
+        r < 0.44
+          ? this.getHazardForLevel(this.level)
+          : r < 0.68
           ? 'coin'
           : r < 0.82
           ? 'gasolina'
@@ -481,8 +655,12 @@ export class RideScene extends Phaser.Scene {
         o.x = Phaser.Math.Linear(o.x, this.rider.x, Math.min(1, dt * 5));
       }
 
-      if (Math.abs(o.y - this.rider.y) < 30 && Math.abs(o.x - this.rider.x) < 38) {
-        if (o.kind === 'hole') {
+      const isHazard = HAZARDS.includes(o.kind as HazardKind);
+      const hitY = HIT_HEIGHT[o.kind] || 30;
+      const hitX = HIT_WIDTH[o.kind] || 35;
+
+      if (Math.abs(o.y - this.rider.y) < hitY && Math.abs(o.x - this.rider.x) < hitX) {
+        if (isHazard) {
           this.hit(o);
         } else {
           this.collect(o);
@@ -504,5 +682,37 @@ export class RideScene extends Phaser.Scene {
     }
 
     this.refresh();
+  }
+
+  private getHazardForLevel(level: number): ObstacleKind {
+    const r = Math.random();
+    if (level === 1) {
+      // Nivel 1: Solo hoyos (huacas)
+      return 'hole';
+    } else if (level === 2) {
+      // Nivel 2: Oficiales del tránsito (DIGESETT/Amet) con algunos hoyos
+      return r < 0.75 ? 'officer' : 'hole';
+    } else if (level === 3) {
+      // Nivel 3: Carros de policías
+      if (r < 0.60) return 'police_car';
+      if (r < 0.85) return 'officer';
+      return 'hole';
+    } else if (level === 4) {
+      // Nivel 4: Camionetas
+      if (r < 0.50) return 'truck';
+      if (r < 0.75) return 'police_car';
+      if (r < 0.90) return 'officer';
+      return 'hole';
+    } else if (level === 5) {
+      // Nivel 5: Tanques de guerra
+      if (r < 0.45) return 'tank';
+      if (r < 0.65) return 'truck';
+      if (r < 0.82) return 'police_car';
+      return r < 0.92 ? 'officer' : 'hole';
+    } else {
+      // Nivel 6+: ¡Combinación caótica total de todos los obstáculos!
+      const allHazards: ObstacleKind[] = ['hole', 'officer', 'police_car', 'truck', 'tank'];
+      return allHazards[Math.floor(Math.random() * allHazards.length)];
+    }
   }
 }
