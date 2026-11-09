@@ -1,0 +1,35 @@
+{
+  "name": "motoconcho-express-2",
+  "version": "2.0.0",
+  "description": "Secuela de Motoconcho Express: conduce un motoconcho por tres carriles en Santo Domingo, esquiva las huacas y consigue el mayor puntaje.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jperalta19/motoconcho-express-2.git"
+  },
+  "keywords": [
+    "game",
+    "phaser",
+    "typescript",
+    "vite",
+    "motoconcho"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Jperalta19/motoconcho-express-2/issues"
+  },
+  "homepage": "https://github.com/Jperalta19/motoconcho-express-2#readme",
+  "dependencies": {
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vite": "^5.4.21"
+  }
+}
