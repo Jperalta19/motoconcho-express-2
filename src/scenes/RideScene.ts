@@ -50,6 +50,7 @@ export class RideScene extends Phaser.Scene {
   public nitroUntil = 0;
   public magnetUntil = 0;
   public alive = false;
+  private saving = false;
   public roadOffset = 0;
   public cloudOffset = 0;
   public rider!: Phaser.GameObjects.Image;
@@ -370,16 +371,16 @@ export class RideScene extends Phaser.Scene {
   }
 
   public startRide(): void {
-    if (!Auth.getCurrentUser()) return;
+    if (!Auth.getCurrentUser() || this.saving) return;
     this.loadScores();
     this.objects.forEach(o => o.destroy());
     this.objects = [];
     this.lane = 1;
     this.score = this.totalScore;
-    this.runStartScore = this.totalScore;
+    this.level = Math.max(1, Number(localStorage.getItem(Auth.scoreKey('level'))) || 1);
+    this.runStartScore = this.totalScore - (this.level - 1) * 100;
     this.distance = 0;
-    this.level = 1;
-    this.speed = 220;
+    this.speed = 220 + (this.level - 1) * 25;
     this.clock = 0;
     this.nextSpawn = 0.7;
     this.shield = false;
@@ -484,6 +485,7 @@ export class RideScene extends Phaser.Scene {
     this.alive = false;
     sound.play('hit');
     this.refresh();
+    void this.syncProgress();
 
     const finalEl = document.getElementById('final');
     if (finalEl) finalEl.textContent = `Puntaje: ${Math.floor(this.score)}`;
@@ -496,6 +498,30 @@ export class RideScene extends Phaser.Scene {
 
     const overEl = document.getElementById('over');
     if (overEl) overEl.hidden = false;
+  }
+
+  private async syncProgress(): Promise<void> {
+    if (this.saving) return;
+    this.saving = true;
+    const buttons = ['play', 'again', 'logout'].map(id => document.getElementById(id) as HTMLButtonElement | null);
+    buttons.forEach(b => { if (b) b.disabled = true; });
+    let status = document.getElementById('cloud-status');
+    if (!status) {
+      status = document.createElement('p'); status.id = 'cloud-status'; status.setAttribute('role', 'status');
+      document.getElementById('over')?.append(status);
+    }
+    status.textContent = 'Guardando progreso en la nube...';
+    document.getElementById('cloud-retry')?.remove();
+    try {
+      await Auth.saveProgress(this.bestDistance, this.totalScore, this.level);
+      status.textContent = 'Progreso guardado en la nube.';
+    } catch (error) {
+      status.textContent = (error instanceof Error ? error.message : 'Error de conexión.') + ' Esta partida aún no está en la nube. Reintenta antes de cerrar o salir.';
+      const retry = document.createElement('button'); retry.id = 'cloud-retry'; retry.textContent = 'Reintentar guardado';
+      retry.onclick = () => { void this.syncProgress(); }; status.after(retry);
+    } finally {
+      this.saving = false; buttons.forEach(b => { if (b) b.disabled = false; });
+    }
   }
 
   public refresh(): void {
