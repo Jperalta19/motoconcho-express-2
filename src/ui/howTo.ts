@@ -50,3 +50,51 @@ refresh.addEventListener('click', () => { void loadTop(); });
 document.querySelectorAll<HTMLButtonElement>('[data-how-to]').forEach(button => {
   button.addEventListener('click', () => { dialog.showModal(); void loadTop(); });
 });
+
+// Clasificación compacta del menú: pública e independiente de la sesión.
+const menuStyle = document.createElement('style');
+menuStyle.textContent = `
+.menu-top5{margin:8px 0 12px;padding:7px 10px;border-radius:10px;background:#f4e7b8;color:#143643;text-align:left;font-size:12px;line-height:1.25}
+.menu-top5 h3{font-size:13px;text-align:center;margin:0 0 4px}.menu-top5 ol{margin:0;padding:0;list-style:none}.menu-top5 li{display:flex;justify-content:space-between;gap:8px;padding:2px 0}.menu-top5 li span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.menu-top5 li span:last-child{flex-shrink:0;font-weight:900}.card .menu-top5 p{font-size:11px;line-height:1.25;margin:2px 0;font-weight:650}.menu-top5 [role=alert]{color:#8f251a}
+@media(max-height:650px){#start .card{padding:12px 16px}#start .eyebrow{margin-bottom:6px}#start .card h2{font-size:29px;margin:4px 0 8px}#start .card>p{margin:6px 0;font-size:12px}#start .action{padding:10px 6px;font-size:16px}#start .howto-link{margin-top:8px!important;padding:7px!important}.menu-top5{margin:5px 0 8px;padding:5px 8px;font-size:11px}.menu-top5 li{padding:1px 0}}
+`;
+document.head.append(menuStyle);
+const menuRankings: HTMLElement[] = [];
+for (const selector of ['#start .card > p', '#auth .card > p']) {
+  const subtitle = document.querySelector(selector);
+  if (!subtitle) continue;
+  const box = document.createElement('section');
+  box.className = 'menu-top5';
+  box.setAttribute('aria-label', 'Top 5 global por récord');
+  box.innerHTML = '<h3>Top 5 global</h3><p role="status" aria-live="polite">Cargando récords…</p>';
+  subtitle.after(box);
+  menuRankings.push(box);
+}
+async function loadMenuTop(): Promise<void> {
+  try {
+    const entries = await rpc<Entry[]>('top5_global', {});
+    for (const box of menuRankings) {
+      box.querySelector('p')?.remove();
+      if (!entries.length) {
+        const empty = document.createElement('p'); empty.textContent = '¡Estrena la clasificación!'; box.append(empty); continue;
+      }
+      const list = document.createElement('ol');
+      entries.slice(0, 5).forEach((entry, index) => {
+        const row = document.createElement('li');
+        const name = document.createElement('span');
+        const distance = document.createElement('span');
+        name.textContent = (index + 1) + '. ' + entry.username;
+        distance.textContent = entry.record_m + ' m';
+        row.append(name, distance); list.append(row);
+      });
+      box.append(list);
+    }
+  } catch {
+    for (const box of menuRankings) {
+      const message = box.querySelector('p')!;
+      message.setAttribute('role', 'alert');
+      message.textContent = 'No se pudo cargar el Top 5. Puedes seguir jugando.';
+    }
+  }
+}
+void loadMenuTop();
