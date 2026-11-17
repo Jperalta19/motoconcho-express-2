@@ -92,7 +92,7 @@ function displaySession(): void {
       scene.totalScore = totalScore;
       scene.bestDistance = best;
       scene.distance = 0;
-      scene.level = 1;
+      scene.level = Math.max(1, readNumber(Auth.scoreKey('level')));
       scene.refresh();
     }
 
@@ -113,13 +113,14 @@ function displaySession(): void {
 async function handleAuth(method: 'login' | 'register'): Promise<void> {
   if (!authError || !registerBtn || !loginBtn || !authUser || !authPassword) return;
 
-  authError.textContent = '';
+  authError.textContent = 'Cargando...';
   registerBtn.disabled = true;
   loginBtn.disabled = true;
 
   try {
     await Auth[method](authUser.value, authPassword.value);
     authPassword.value = '';
+    authError.textContent = '';
     displaySession();
   } catch (err: unknown) {
     if (err instanceof Error) {
@@ -200,13 +201,20 @@ if (logoutBtn) {
 
 // Initial session check once DOM and Scene are ready
 window.addEventListener('load', () => {
-  try {
-    displaySession();
-  } catch {
-    if (authError) {
-      authError.textContent = 'No se pudo acceder al almacenamiento local de este navegador.';
+  void (async () => {
+    if (Auth.getCurrentUser()) {
+      if (authError) authError.textContent = 'Cargando progreso de la nube...';
+      try { await Auth.loadProfile(); }
+      catch (error) {
+        Auth.logout();
+        displaySession();
+        if (authError) authError.textContent = error instanceof Error ? error.message : 'No se pudo cargar el perfil.';
+        return;
+      }
     }
-  }
+    if (authError) authError.textContent = '';
+    displaySession();
+  })();
 });
 
 // Also expose game scene getter on window for dev debugging if needed
