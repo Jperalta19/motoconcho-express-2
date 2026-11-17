@@ -24,7 +24,7 @@ async function load(content: HTMLElement, refresh: HTMLButtonElement): Promise<v
     const data = await Auth.panelAdmin();
     if (request !== version || !Auth.isAdmin()) return;
     const stats = node('div'); stats.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;margin:16px 0';
-    for (const [label, value] of [['Jugadores', data.total_jugadores], ['Récord global (m)', data.record_global], ['Puntos acumulados', data.puntos_acumulados]] as const) {
+    for (const [label, value] of [['Jugadores', data.total_jugadores]] as const) {
       const card = node('div'); card.style.cssText = 'flex:1;min-width:130px;background:#e0f7ed;border-radius:14px;padding:16px';
       card.append(node('div', label)); const strong = node('strong', Number(value).toLocaleString('es-DO')); strong.style.fontSize = '26px'; card.append(strong); stats.append(card);
     }
