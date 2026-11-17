@@ -1,111 +1,43 @@
-import type { UserAccount } from '../types';
-
-const USERS_KEY = 'motoconcho2-users';
-const SESSION_KEY = 'motoconcho2-session';
-
-function cleanUsername(name: string): string {
-  return String(name || '').trim().toLowerCase();
-}
-
-function getUserList(): UserAccount[] {
-  const raw = localStorage.getItem(USERS_KEY);
-  if (!raw) return [];
-  const users = JSON.parse(raw);
-  if (!Array.isArray(users)) {
-    throw new Error('No se pueden leer los usuarios guardados.');
-  }
-  return users as UserAccount[];
-}
-
-function getUserKey(name: string, type: 'total' | 'record'): string {
-  return `motoconcho2-user-${encodeURIComponent(name)}-${type}`;
-}
-
-function validateCredentials(name: string, password: string, isRegister = false): void {
-  if (!name || !password) {
-    throw new Error('Completa usuario y clave.');
-  }
-  if (!/^[a-z0-9_.-]{1,32}$/.test(name)) {
-    throw new Error('Usa de 1 a 32 letras sin acentos, números, punto, guion o guion bajo.');
-  }
-  if (isRegister && password.length < 6) {
-    throw new Error('La clave debe tener al menos 6 caracteres.');
+import { rpc } from './db';
+interface Session { user_id: string; username: string; token: string }
+interface Profile { username: string; record_m: number; puntos_totales: number; nivel: number }
+const SESSION_KEY = 'motoconcho2-cloud-session';
+let active: Session | null = (() => { try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); return s?.user_id && s?.username && s?.token ? s as Session : null; } catch { return null; } })();
+function session(): Session { if (!active) throw new Error('Debes iniciar sesión.'); return active; }
+function key(name: string, type: string): string { return 'motoconcho2-user-' + encodeURIComponent(name) + '-' + type; }
+function cache(s: Session, p: Profile): void {
+  if (active?.token !== s.token) return;
+  for (const [type, value] of [['record', p.record_m], ['total', p.puntos_totales], ['level', p.nivel]] as const) {
+    try { localStorage.setItem(key(s.username, type), String(value)); } catch { /* La nube sigue siendo la fuente principal. */ }
   }
 }
-
-async function hashPassword(password: string): Promise<string> {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
-  return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
+async function authenticate(fn: string, username: string, clave: string): Promise<string> {
+  const name = username.trim().toLowerCase();
+  if (!/^[a-z0-9_.-]{1,32}$/.test(name)) throw new Error('Usa de 1 a 32 letras sin acentos, números, punto, guion o guion bajo.');
+  if (clave.length < 6) throw new Error('La clave debe tener al menos 6 caracteres.');
+  const s = await rpc<Session>(fn, { username: name, clave });
+  const p = await rpc<Profile>('mi_perfil', { user_id: s.user_id, token: s.token });
+  active = s;
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch { /* Sesión en memoria si el navegador bloquea almacenamiento. */ }
+  cache(s, p);
+  return s.username;
 }
-
+let saves: Promise<unknown> = Promise.resolve();
 export const Auth = {
-  getCurrentUser(): string | null {
-    try {
-      const name = localStorage.getItem(SESSION_KEY);
-      return name && getUserList().some(u => u.username === name) ? name : null;
-    } catch {
-      return null;
-    }
-  },
-
-  async register(username: string, password: string): Promise<string> {
-    const name = cleanUsername(username);
-    validateCredentials(name, password, true);
-    const users = getUserList();
-    if (users.some(u => u.username === name)) {
-      throw new Error('Ese usuario ya existe.');
-    }
-    const passwordHash = await hashPassword(password);
-
-    // El primer registro hereda los valores globales anteriores en este navegador si existen
-    if (users.length === 0) {
-      const legacyKeys: [string, 'total' | 'record'][] = [
-        ['motoconcho2-total-score', 'total'],
-        ['motoconcho2-distance-record', 'record']
-      ];
-      for (const [oldKey, type] of legacyKeys) {
-        const old = localStorage.getItem(oldKey);
-        if (old !== null && localStorage.getItem(getUserKey(name, type)) === null) {
-          localStorage.setItem(getUserKey(name, type), old);
-        }
-      }
-    }
-
-    users.push({
-      username: name,
-      passwordHash,
-      createdAt: new Date().toISOString()
-    });
-
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    localStorage.setItem(SESSION_KEY, name);
-    return name;
-  },
-
-  async login(username: string, password: string): Promise<string> {
-    const name = cleanUsername(username);
-    validateCredentials(name, password);
-    const user = getUserList().find(u => u.username === name);
-    if (!user) {
-      throw new Error('Usuario no encontrado.');
-    }
-    const enteredHash = await hashPassword(password);
-    if (user.passwordHash !== enteredHash) {
-      throw new Error('Clave incorrecta.');
-    }
-    localStorage.setItem(SESSION_KEY, name);
-    return name;
-  },
-
-  logout(): void {
-    localStorage.removeItem(SESSION_KEY);
-  },
-
-  scoreKey(type: 'total' | 'record'): string {
-    const user = Auth.getCurrentUser();
-    if (!user) {
-      throw new Error('Debes iniciar sesión.');
-    }
-    return getUserKey(user, type);
+  getCurrentUser(): string | null { return active?.username || null; },
+  register(username: string, password: string): Promise<string> { return authenticate('registrar', username, password); },
+  login(username: string, password: string): Promise<string> { return authenticate('iniciar_sesion', username, password); },
+  logout(): void { active = null; try { localStorage.removeItem(SESSION_KEY); } catch { /* memoria */ } },
+  scoreKey(type: 'total' | 'record' | 'level'): string { return key(session().username, type); },
+  async loadProfile(): Promise<void> { const s = session(); const p = await rpc<Profile>('mi_perfil', { user_id: s.user_id, token: s.token }); cache(s, p); },
+  saveProgress(record: number, total: number, level: number): Promise<void> {
+    const s = session();
+    const run = async (): Promise<void> => {
+      const p = await rpc<Profile>('guardar_progreso', { user_id: s.user_id, token: s.token, record_m: Math.floor(record), puntos_totales: Math.floor(total), nivel: Math.max(1, Math.floor(level)) });
+      cache(s, p);
+    };
+    const result = saves.catch(() => undefined).then(run);
+    saves = result;
+    return result;
   }
 };
