@@ -14,41 +14,11 @@ dialog.innerHTML = `<div class="howto-tools"><h2 id="howto-title">Cómo jugar</h
 <h3>Un viaje por tres carriles</h3><p>Recorre la mayor distancia posible. Esquiva hoyos, agentes de tránsito, patrullas, camionetas y tanques de guerra.</p>
 <h3>Controles</h3><p>Toca izquierda o derecha para cambiar de carril, o usa las flechas ← → del teclado. El sonido es opcional: actívalo o siléncialo con ♪.</p>
 <h3>Power-ups</h3><ul><li>🪙 Moneda: +10 puntos.</li><li>⛽ Gasolina: +15 puntos.</li><li>🪖 Casco: escudo.</li><li>⚡ Nitro: invulnerable.</li><li>🧲 Imán: atrae monedas.</li></ul>
-<h3>Top 5 global por distancia</h3><p>Los mejores récords en metros, entre todos los jugadores.</p><p data-status role="status" aria-live="polite"></p><div data-ranking></div><button type="button" data-refresh>Actualizar clasificación</button>`;
+<h3>Cómo cambian los obstáculos</h3><p>La dificultad sube por puntos, no por metros. Retomas tu nivel guardado y subes un nivel por cada 100 puntos que recoges durante el viaje: monedas (+10) y gasolina (+15).</p><ul><li><strong>Nivel 1:</strong> solo hoyos entre los obstáculos.</li><li><strong>Nivel 2:</strong> se suman agentes de tránsito; predominan sobre los hoyos.</li><li><strong>Nivel 3:</strong> llegan las patrullas; siguen apareciendo agentes y hoyos.</li><li><strong>Nivel 4:</strong> se suman camionetas, junto con patrullas, agentes y hoyos.</li><li><strong>Nivel 5:</strong> llegan los tanques de guerra y se mantienen los tipos anteriores.</li><li><strong>Nivel 6 en adelante:</strong> los cinco tipos tienen la misma probabilidad entre los obstáculos.</li></ul><p><strong>Más velocidad:</strong> la base es 220 píxeles por segundo en nivel 1 y aumenta 25 por cada nivel, sin tope programado. El nitro multiplica temporalmente esa velocidad por 1,55 durante 4 segundos; no cambia el intervalo de aparición.</p><p><strong>Más frecuencia:</strong> el primer objeto sale aproximadamente a los 0,7 segundos. Después aparece un objeto cada 1,15 segundos en nivel 1; el intervalo baja 0,055 segundos por nivel hasta un mínimo de 0,48 segundos desde el nivel 14.</p><p>Cada aparición elige un carril al azar: hay un 44 % de probabilidad de obstáculo y un 56 % de premio o power-up. No todos los objetos son peligros ni hay un orden fijo de aparición; los tipos disponibles dependen del nivel.</p>`;
 document.body.append(dialog);
-const status = dialog.querySelector<HTMLElement>('[data-status]')!;
-const ranking = dialog.querySelector<HTMLElement>('[data-ranking]')!;
-const refresh = dialog.querySelector<HTMLButtonElement>('[data-refresh]')!;
-async function loadTop(): Promise<void> {
-  refresh.disabled = true;
-  status.setAttribute('role', 'status');
-  status.textContent = 'Cargando clasificación…';
-  ranking.replaceChildren();
-  try {
-    const rows = await rpc<Entry[]>('top5_global', {});
-    if (!rows.length) { status.textContent = 'Todavía no hay récords. ¡Estrena la clasificación!'; return; }
-    const table = document.createElement('table');
-    table.innerHTML = '<caption>Clasificación mundial por récord</caption><thead><tr><th scope="col">Jugador</th><th scope="col">Distancia</th></tr></thead>';
-    const body = document.createElement('tbody');
-    rows.forEach((entry, index) => {
-      const row = document.createElement('tr');
-      const name = document.createElement('td');
-      const distance = document.createElement('td');
-      name.textContent = (index + 1) + '. ' + entry.username;
-      distance.textContent = entry.record_m + ' m';
-      row.append(name, distance); body.append(row);
-    });
-    table.append(body); ranking.append(table);
-    status.textContent = 'Récords globales actualizados.';
-  } catch (error) {
-    status.setAttribute('role', 'alert');
-    status.textContent = error instanceof Error ? error.message : 'No se pudo cargar la clasificación. Inténtalo otra vez.';
-  } finally { refresh.disabled = false; }
-}
 dialog.querySelector('[data-close]')!.addEventListener('click', () => dialog.close());
-refresh.addEventListener('click', () => { void loadTop(); });
 document.querySelectorAll<HTMLButtonElement>('[data-how-to]').forEach(button => {
-  button.addEventListener('click', () => { dialog.showModal(); void loadTop(); });
+  button.addEventListener('click', () => { dialog.showModal(); });
 });
 
 // Clasificación compacta del menú: pública e independiente de la sesión.
