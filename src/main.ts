@@ -3,6 +3,7 @@ import * as Phaser from 'phaser';
 import { RideScene } from './scenes/RideScene';
 import { sound } from './services/audio';
 import { Auth } from './services/auth';
+import { updateAdmin } from './ui/admin';
 import { hud } from './ui/hud';
 
 // Helper selector
@@ -81,6 +82,7 @@ function readNumber(key: string): number {
 }
 
 function displaySession(): void {
+  updateAdmin();
   const currentUser = Auth.getCurrentUser();
   if (currentUser) {
     const best = readNumber(Auth.scoreKey('record'));
