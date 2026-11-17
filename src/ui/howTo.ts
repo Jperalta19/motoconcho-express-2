@@ -30,7 +30,7 @@ menuStyle.textContent = `
 `;
 document.head.append(menuStyle);
 const menuRankings: HTMLElement[] = [];
-for (const selector of ['#start .card > p', '#auth .card > p']) {
+for (const selector of ['#start .card > p']) {
   const subtitle = document.querySelector(selector);
   if (!subtitle) continue;
   const box = document.createElement('section');
