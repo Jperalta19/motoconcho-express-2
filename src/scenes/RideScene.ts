@@ -51,6 +51,8 @@ export class RideScene extends Phaser.Scene {
   public magnetUntil = 0;
   public alive = false;
   private saving = false;
+  private plan: number[] = [];
+  private ticket = 0;
   public roadOffset = 0;
   public cloudOffset = 0;
   public rider!: Phaser.GameObjects.Image;
@@ -370,14 +372,19 @@ export class RideScene extends Phaser.Scene {
     g.destroy();
   }
 
-  public startRide(): void {
+  public async startRide(): Promise<void> {
     if (!Auth.getCurrentUser() || this.saving) return;
+    this.saving=true;
+    try { if(!Auth.inDuel()) this.plan=await Auth.beginRide(); }
+    catch(error){hud.showNotice(error instanceof Error?error.message:'No se pudo iniciar el viaje.');this.saving=false;return;}
+    this.saving=false;this.ticket=0;
     this.loadScores();
     this.objects.forEach(o => o.destroy());
     this.objects = [];
     this.lane = 1;
     this.score = this.totalScore;
-    this.level = Math.max(1, Number(localStorage.getItem(Auth.scoreKey('level'))) || 1);
+    this.level = Auth.inDuel()?1:Math.max(1, Number(localStorage.getItem(Auth.scoreKey('level'))) || 1);
+    if(Auth.inDuel()) {this.totalScore=0;this.score=0;}
     this.runStartScore = this.totalScore - (this.level - 1) * 100;
     this.distance = 0;
     this.speed = 220 + (this.level - 1) * 25;
@@ -446,7 +453,8 @@ export class RideScene extends Phaser.Scene {
       this.announce('¡Imán!');
     }
 
-    if (t === 'coin' || t === 'gasolina') {
+    if ((t === 'coin' || t === 'gasolina') && !Auth.inDuel()) {
+      if(obj.ticket!=null) Auth.collect(obj.ticket,this.distance);
       this.totalScore = this.score;
       try {
         localStorage.setItem(Auth.scoreKey('total'), String(this.totalScore));
@@ -485,6 +493,7 @@ export class RideScene extends Phaser.Scene {
     this.alive = false;
     sound.play('hit');
     this.refresh();
+    if(Auth.inDuel()) {window.dispatchEvent(new Event('duelo-muerte'));return;}
     void this.syncProgress();
 
     const finalEl = document.getElementById('final');
@@ -513,7 +522,8 @@ export class RideScene extends Phaser.Scene {
     status.textContent = 'Guardando progreso en la nube...';
     document.getElementById('cloud-retry')?.remove();
     try {
-      await Auth.saveProgress(this.bestDistance, this.totalScore, this.level);
+      await Auth.saveProgress(this.distance, this.totalScore, this.level);
+      await Auth.loadProfile();this.loadScores();this.score=this.totalScore;this.refresh();
       status.textContent = 'Progreso guardado en la nube.';
     } catch (error) {
       status.textContent = (error instanceof Error ? error.message : 'Error de conexión.') + ' Esta partida aún no está en la nube. Reintenta antes de cerrar o salir.';
@@ -526,7 +536,7 @@ export class RideScene extends Phaser.Scene {
 
   public refresh(): void {
     const travelled = Math.floor(this.distance);
-    if (travelled > this.bestDistance) {
+    if (!Auth.inDuel() && travelled > this.bestDistance) {
       this.bestDistance = travelled;
       try {
         localStorage.setItem(Auth.scoreKey('record'), String(this.bestDistance));
@@ -651,7 +661,9 @@ export class RideScene extends Phaser.Scene {
 
     this.nextSpawn -= dt;
     if (this.nextSpawn <= 0) {
-      const r = Math.random();
+      const ticket = this.ticket++;
+      const value = this.plan[ticket];
+      const r = Auth.inDuel()?Math.random():(value % 10000)/10000;
       const type: ObstacleKind =
         r < 0.44
           ? this.getHazardForLevel(this.level)
@@ -664,7 +676,8 @@ export class RideScene extends Phaser.Scene {
           : r < 0.94
           ? 'nitro'
           : 'magnet';
-      this.spawn(type, Phaser.Math.Between(0, 2));
+      const obj=this.spawn(type,Auth.inDuel()?Phaser.Math.Between(0,2):Math.floor(value/10000)%3);
+      obj.ticket=ticket;
       this.nextSpawn = Math.max(0.48, 1.15 - (this.level - 1) * 0.055);
     }
 

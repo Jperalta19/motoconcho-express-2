@@ -5,6 +5,7 @@ export type PickupKind = 'coin' | 'gasolina' | 'helmet' | 'nitro' | 'magnet';
 export type ObstacleKind = HazardKind | PickupKind;
 
 export interface GameItem extends Phaser.GameObjects.Image {
+  ticket?: number;
   kind: ObstacleKind;
   lane: number;
   roadX: number;

@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/Jperalta19/motoconcho-express-2#readme",
   "dependencies": {
+    "@supabase/supabase-js": "2.49.1",
     "phaser": "3.90.0"
   },
   "devDependencies": {
@@ -33,4 +34,3 @@
     "vite": "^5.4.21"
   }
 }
-
