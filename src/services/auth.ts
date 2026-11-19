@@ -25,8 +25,28 @@ async function authenticate(fn: string, username: string, clave: string): Promis
   cache(s, p);
   return s.username;
 }
-let saves: Promise<unknown> = Promise.resolve();
+
+let duelMode = false;
+let runId: string | null = null;
+let sequence = 0;
+let events: Promise<void> = Promise.resolve();
+const queue: Array<()=>Promise<void>>=[];
+function flush(): Promise<void> { const run=async()=>{while(queue.length){await queue[0]();queue.shift();}};events=events.catch(()=>undefined).then(run);return events; }
+function event(action:string,distance:number,ticket?:number):Promise<void>{
+ const s=session();const n=++sequence;const id=runId;
+ queue.push(async()=>{const p=await rpc<Profile>('viaje',{token:s.token,accion:action,secuencia:n,evento:ticket==null?null:String(ticket),distancia:distance,viaje_id:id});cache(s,p);});return flush();
+}
 export const Auth = {
+ setDuel(active: boolean): void {duelMode=active;},
+ inDuel(): boolean {return duelMode;},
+ async request<T>(fn: string,args: Record<string,unknown>): Promise<T> {return rpc<T>(fn,{...args,token:session().token});},
+ async beginRide(): Promise<number[]> {
+  await flush();
+  const s=session(); const data=await rpc<{perfil:Profile;plan:number[];viaje_id:string}>('viaje',{token:s.token,accion:'iniciar'});
+  cache(s,data.perfil);runId=data.viaje_id;sequence=0;events=Promise.resolve();return data.plan;
+ },
+ collect(ticket: number,distance: number): void {void event('recoger',distance,ticket).catch(()=>undefined);},
+
   getCurrentUser(): string | null { return active?.username || null; },
   isAdmin(): boolean { return !!active && admin; },
   async panelAdmin(): Promise<AdminPanel> { const s = session(); return rpc<AdminPanel>('panel_admin', { token: s.token }); },
@@ -35,14 +55,9 @@ export const Auth = {
   logout(): void { active = null; admin = false; try { localStorage.removeItem(SESSION_KEY); } catch { /* memoria */ } },
   scoreKey(type: 'total' | 'record' | 'level'): string { return key(session().username, type); },
   async loadProfile(): Promise<void> { const s = session(); const p = await rpc<Profile>('mi_perfil', { user_id: s.user_id, token: s.token }); cache(s, p); },
-  saveProgress(record: number, total: number, level: number): Promise<void> {
-    const s = session();
-    const run = async (): Promise<void> => {
-      const p = await rpc<Profile>('guardar_progreso', { user_id: s.user_id, token: s.token, record_m: Math.floor(record), puntos_totales: Math.floor(total), nivel: Math.max(1, Math.floor(level)) });
-      cache(s, p);
-    };
-    const result = saves.catch(() => undefined).then(run);
-    saves = result;
-    return result;
+  async saveProgress(_record: number,_total: number,_level: number): Promise<void> {
+   if(duelMode)return;
+   await flush();
+   await event('terminar',_record);
   }
-    };
+};

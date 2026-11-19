@@ -1,6 +1,7 @@
 begin;
+alter table public.progreso alter column puntos_totales type bigint;
 create table public.duelos (
- id uuid primary key default gen_random_uuid(), codigo text unique not null default upper(substr(encode(extensions.gen_random_bytes(8),'hex'),1,8)), apuesta bigint not null check(apuesta>=50 and apuesta<=1073741823),
+ id uuid primary key default gen_random_uuid(), codigo text unique not null default upper(substr(encode(extensions.gen_random_bytes(8),'hex'),1,8)), apuesta bigint not null check(apuesta>=50),
  estado text not null default 'espera' check(estado in ('espera','preparando','jugando','resolviendo','terminado','cancelado')),
  creador uuid not null references public.jugadores(id), invitado uuid references public.jugadores(id),
  distancia_a numeric not null default 0, distancia_b numeric not null default 0,
@@ -11,11 +12,11 @@ create table public.duelos (
  creado timestamptz not null default clock_timestamp(), check(invitado is null or invitado<>creador)
 );
 create table public.duelo_movimientos(id bigint generated always as identity primary key,duelo uuid not null references public.duelos(id), jugador uuid not null references public.jugadores(id), concepto text not null, puntos bigint not null, creado timestamptz not null default clock_timestamp(),unique(duelo,jugador,concepto));
-create table public.viajes_servidor(user_id uuid primary key references public.jugadores(id), inicio timestamptz not null, ultimo timestamptz not null, evento bigint not null default 0, puntos integer not null default 0, distancia numeric not null default 0, terminado boolean not null default false, plan jsonb not null default '[]'::jsonb, recogido integer not null default -1);
+create table public.viajes_servidor(user_id uuid primary key references public.jugadores(id), inicio timestamptz not null, ultimo timestamptz not null, evento bigint not null default 0, puntos integer not null default 0, distancia numeric not null default 0, terminado boolean not null default false, plan jsonb not null default '[]'::jsonb, recogido integer not null default -1, run_id uuid not null default gen_random_uuid(), nivel_inicial integer not null default 1);
 alter table public.duelos enable row level security;
 alter table public.duelo_movimientos enable row level security;
 alter table public.viajes_servidor enable row level security;
-revoke all on public.duelos,public.duelo_movimientos,public.viajes_servidor from anon,authenticated;
+revoke all on public.duelos,public.duelo_movimientos,public.viajes_servidor from public,anon,authenticated;
 create function public.duelo_usuario(token text) returns uuid language plpgsql security definer set search_path='' as $$ declare u uuid; begin select s.user_id into u from public.sesiones s where s.token_hash=encode(extensions.digest(token,'sha256'),'hex') and s.expires_at>now(); if u is null then raise exception 'Sesión inválida o vencida.'; end if; return u; end $$;
 revoke all on function public.duelo_usuario(text) from public,anon,authenticated;
 create function public.duelo_liquidar(sala uuid, vencedor uuid, razon text) returns void language plpgsql security definer set search_path='' as $$ declare d public.duelos; begin
@@ -35,10 +36,11 @@ revoke all on function public.duelo_liquidar(uuid,uuid,text) from public,anon,au
 create function public.duelo(token text, accion text, codigo text default null, apuesta bigint default null, distancia numeric default null) returns jsonb language plpgsql security definer set search_path='' as $$
 declare u uuid; d public.duelos; a boolean; t timestamptz:=clock_timestamp(); otra uuid; saldo bigint; delta numeric; limite numeric; primera timestamptz; resultado jsonb;
 begin
+ if accion is null then raise exception 'Operación inválida.';end if;
  u:=public.duelo_usuario(token);
  perform pg_advisory_xact_lock(193881,1);
  if accion='crear' then
- if apuesta is null or apuesta<50 or apuesta>1073741823 then raise exception 'La apuesta mínima es 50 puntos (máximo técnico 1073741823).'; end if;
+ if apuesta is null or apuesta<50 then raise exception 'La apuesta mínima es 50 puntos.'; end if;
  if exists(select 1 from public.duelos where (creador=u or invitado=u) and estado in('espera','preparando','jugando','resolviendo')) then raise exception 'Ya tienes una sala activa. Recupérala o cancélala.'; end if;
  if exists(select 1 from public.viajes_servidor where user_id=u and not terminado) then raise exception 'Termina el viaje solitario antes de duelar.'; end if;
  select puntos_totales into saldo from public.progreso where user_id=u for update;
@@ -72,7 +74,8 @@ begin
  update public.duelos set actividad_a=case when a then t else actividad_a end,actividad_b=case when not a then t else actividad_b end where id=d.id;
  end if;
  if accion='cancelar' then
- if d.estado='espera' then update public.duelos set estado='cancelado',cierre=t,motivo='Cancelada sin apuesta' where id=d.id;
+ if d.estado='resolviendo' then null;
+ elsif d.estado='espera' then update public.duelos set estado='cancelado',cierre=t,motivo='Cancelada sin apuesta' where id=d.id;
  elsif d.estado in('preparando','jugando','resolviendo') then perform public.duelo_liquidar(d.id,otra,'Abandono'); end if;
  elsif accion='listo' and d.estado='preparando' then
  update public.duelos set listo_a=listo_a or a,listo_b=listo_b or not a,actividad_a=case when a then t else actividad_a end,actividad_b=case when not a then t else actividad_b end where id=d.id returning * into d;
@@ -112,18 +115,20 @@ revoke all on function public.duelo(text,text,text,bigint,numeric) from public;
 grant execute on function public.duelo(text,text,text,bigint,numeric) to anon,authenticated;
 -- El endpoint antiguo ya no puede escribir saldos desde totales del navegador.
 create or replace function public.guardar_progreso(user_id uuid,record_m integer,puntos_totales integer,nivel integer,token text) returns jsonb language plpgsql security definer set search_path='' as $$ begin perform public.mi_perfil(user_id,token); raise exception 'Cliente antiguo: recarga el juego para guardar mediante viajes validados.'; end $$;
-create function public.viaje(token text,accion text,secuencia bigint default 0,evento text default null,distancia numeric default 0) returns jsonb language plpgsql security definer set search_path='' as $$
+create function public.viaje(token text,accion text,secuencia bigint default 0,evento text default null,distancia numeric default 0, viaje_id uuid default null) returns jsonb language plpgsql security definer set search_path='' as $$
 declare u uuid; v public.viajes_servidor; t timestamptz:=clock_timestamp(); dt numeric; valor integer; p public.progreso; idx integer; ficha bigint; mapa jsonb;
 begin
  u:=public.duelo_usuario(token); perform pg_advisory_xact_lock(193881,1);
+ if accion='descartar' then update public.viajes_servidor set terminado=true where user_id=u;return public.mi_perfil(u,token);end if;
  if accion='iniciar' then
  if exists(select 1 from public.duelos where (creador=u or invitado=u) and estado in('espera','preparando','jugando','resolviendo')) then raise exception 'Termina o cancela el duelo primero.'; end if;
  select * into p from public.progreso where user_id=u for update;
  select jsonb_agg(floor(random()*2147483647)::bigint) into mapa from generate_series(1,15001);
- insert into public.viajes_servidor(user_id,inicio,ultimo,plan) values(u,t,t,mapa) on conflict(user_id) do update set inicio=t,ultimo=t,evento=0,puntos=0,distancia=0,terminado=false,plan=mapa,recogido=-1;
- return jsonb_build_object('perfil',public.mi_perfil(u,token),'plan',mapa);
+ insert into public.viajes_servidor(user_id,inicio,ultimo,plan,nivel_inicial) values(u,t,t,mapa,p.nivel) on conflict(user_id) do update set inicio=t,ultimo=t,evento=0,puntos=0,distancia=0,terminado=false,plan=mapa,recogido=-1,run_id=gen_random_uuid(),nivel_inicial=p.nivel;
+ return jsonb_build_object('perfil',public.mi_perfil(u,token),'plan',mapa,'viaje_id',(select run_id from public.viajes_servidor where user_id=u));
  end if;
  select * into v from public.viajes_servidor where user_id=u for update;
+ if viaje_id is distinct from v.run_id then raise exception 'Viaje no vigente.'; end if;
  if v.user_id is null then raise exception 'Inicia un viaje primero.'; end if;
  if v.terminado then return public.mi_perfil(u,token); end if;
  if secuencia<=v.evento then return public.mi_perfil(u,token); end if;
@@ -144,9 +149,9 @@ begin
  update public.progreso set puntos_totales=puntos_totales+valor,updated_at=now() where user_id=u;
  elsif accion<>'terminar' then raise exception 'Evento inválido.'; end if;
  update public.viajes_servidor set evento=secuencia,puntos=puntos+valor,distancia=viaje.distancia,ultimo=t,recogido=case when accion='recoger' then idx else recogido end,terminado=accion='terminar' where user_id=u;
- update public.progreso set record_m=greatest(record_m,floor(viaje.distancia)::integer),nivel=greatest(1,1+floor((v.puntos+valor)/100)::integer),updated_at=now() where user_id=u;
+ update public.progreso set record_m=greatest(record_m,floor(viaje.distancia)::integer),nivel=greatest(1,v.nivel_inicial+floor((v.puntos+valor)/100)::integer),updated_at=now() where user_id=u;
  return public.mi_perfil(u,token);
 end $$;
-revoke all on function public.viaje(text,text,bigint,text,numeric) from public;
-grant execute on function public.viaje(text,text,bigint,text,numeric) to anon,authenticated;
+revoke all on function public.viaje(text,text,bigint,text,numeric,uuid) from public;
+grant execute on function public.viaje(text,text,bigint,text,numeric,uuid) to anon,authenticated;
 commit;

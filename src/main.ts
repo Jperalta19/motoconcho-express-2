@@ -221,3 +221,5 @@ window.addEventListener('load', () => {
 
 // Also expose game scene getter on window for dev debugging if needed
 (window as unknown as { game: Phaser.Game }).game = game;
+import { initDuelo } from './services/duelo';
+initDuelo(getRideScene);
