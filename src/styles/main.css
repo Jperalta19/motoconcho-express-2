@@ -398,3 +398,81 @@ button:focus-visible {
 #logout[hidden] {
   display: none;
 }
+
+
+/* Duelo forms: keep the visual layer scoped away from solo and login. */
+#duelo .card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  transform: none;
+}
+#duelo .eyebrow,
+#duelo h2,
+#duelo p {
+  margin: 0;
+}
+#duelo p {
+  overflow-wrap: anywhere;
+}
+#duelo-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+#duelo label {
+  display: block;
+  width: 100%;
+  margin: 4px 0 -4px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 900;
+  color: #143643;
+}
+#duelo input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding: 12px 14px;
+  border: 2px solid #143643;
+  border-radius: 14px;
+  background: #fffaf0;
+  color: #143643;
+  font: 900 16px ui-rounded, 'Trebuchet MS', system-ui, sans-serif;
+  line-height: 1.4;
+  user-select: text;
+}
+#duelo input:focus-visible {
+  outline: 4px solid #00a2ff;
+  outline-offset: 3px;
+}
+#duelo .action {
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.25;
+  margin: 0 0 5px;
+}
+#duelo .action.secondary {
+  background: #ffda57;
+}
+#duelo .action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+#duelo .mini {
+  line-height: 1.5;
+}
+#duelo-error {
+  color: #8f251a;
+  font-weight: 800;
+}
+#duelo p:empty,
+#duelo [hidden] {
+  display: none;
+}
