@@ -66,7 +66,7 @@ begin
  else
  return jsonb_build_object('codigo',d.codigo,'apuesta',d.apuesta,'estado',d.estado,'nombre_a',(select username from public.jugadores where id=d.creador));
  end if;
- elsif not (u=d.creador or u=d.invitado) then raise exception 'Sala llena, iniciada o acceso no autorizado.';
+ elsif not coalesce(u=d.creador or u=d.invitado,false) then raise exception 'Sala llena, iniciada o acceso no autorizado.';
  elsif accion='unir' then raise exception 'Sala llena o ya iniciada.';
  end if;
  a:=d.creador=u; otra:=case when a then d.invitado else d.creador end;

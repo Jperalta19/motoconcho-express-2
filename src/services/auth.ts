@@ -52,7 +52,7 @@ export const Auth = {
   async panelAdmin(): Promise<AdminPanel> { const s = session(); return rpc<AdminPanel>('panel_admin', { token: s.token }); },
   register(username: string, password: string): Promise<string> { return authenticate('registrar', username, password); },
   login(username: string, password: string): Promise<string> { return authenticate('iniciar_sesion', username, password); },
-  logout(): void { active = null; admin = false; try { localStorage.removeItem(SESSION_KEY); } catch { /* memoria */ } },
+  logout(): void { queue.length=0;runId=null;sequence=0;duelMode=false; active = null; admin = false; try { localStorage.removeItem(SESSION_KEY); } catch { /* memoria */ } },
   scoreKey(type: 'total' | 'record' | 'level'): string { return key(session().username, type); },
   async loadProfile(): Promise<void> { const s = session(); const p = await rpc<Profile>('mi_perfil', { user_id: s.user_id, token: s.token }); cache(s, p); },
   async saveProgress(_record: number,_total: number,_level: number): Promise<void> {
